@@ -1,0 +1,40 @@
+- hosts: docker_nodes
+  gather_facts: false
+  
+  tasks:
+    - name: Test SSH connectivity
+      raw: echo "SSH OK"
+      changed_when: false
+      
+    - name: Ensure /tmp exists
+      raw: mkdir -p /tmp
+      changed_when: false
+
+    - name: Copy CIS check script to nodes
+      copy:
+        src: cis-check.sh
+        dest: /tmp/cis-check.sh
+        mode: '0755'
+      register: copy_result
+      
+    - name: Verify script was copied
+      raw: ls -la /tmp/cis-check.sh
+      changed_when: false
+
+    - name: Run CIS check script
+      command: /tmp/cis-check.sh
+      register: script_output
+      ignore_errors: yes
+
+    - name: Save output to log file on node
+      copy:
+        dest: "/tmp/cis-output.log"
+        content: "{{ script_output.stdout }}"
+      when: script_output.stdout is defined
+
+    - name: Fetch log back to controller
+      fetch:
+        src: "/tmp/cis-output.log"
+        dest: "./logs/{{ inventory_hostname }}.log"
+        flat: yes
+      when: script_output.stdout is defined
