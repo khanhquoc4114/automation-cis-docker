@@ -251,7 +251,6 @@ remediate_2_19() {
     fi
 }
 
-
 # --- Main Function ---
 main() {    
     if [ "$(id -u)" -ne 0 ]; then

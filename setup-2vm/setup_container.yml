@@ -1,0 +1,22 @@
+---
+- name: Deploy and run script on hosts
+  hosts: hosts
+  become: yes
+  tasks:
+    - name: Copy script to host
+      copy:
+        src: ./scripts/setup_container.sh
+        dest: /home/ansible/script.sh
+        mode: '0755'
+        owner: ansible
+        group: ansible
+
+    - name: Execute script
+      shell: /home/ansible/script.sh > /home/ansible/output.log 2>&1
+      become_user: ansible
+      
+    - name: Fetch log from host
+      fetch:
+        src: /home/ansible/output.log
+        dest: ./logs/{{ inventory_hostname }}_output.log
+        flat: yes
