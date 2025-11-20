@@ -27,3 +27,13 @@ log_remediate() {
 log_cmd() {
     echo -e "        ${C_BLUE}Audit:${C_NC} $1"
 }
+
+declare -a REMEDIATION_SUMMARY=()
+
+add_summary() {
+    local id="$1"
+    local title="$2"
+    local status="$3"
+
+    SUMMARY+=("$id|$title|$status")
+}
