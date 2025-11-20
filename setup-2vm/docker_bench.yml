@@ -52,5 +52,5 @@
     - name: Fetch log back to WSL
       fetch:
         src: "{{ bench_remote_dir }}/output.log"
-        dest: ./logs/main-bench/{{ inventory_hostname }}_output.log
+        dest: ./logs/main-bench/{{ ansible_date_time.iso8601_basic_short }}/{{ inventory_hostname }}_output.log
         flat: yes
