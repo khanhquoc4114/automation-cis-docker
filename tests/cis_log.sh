@@ -1,11 +1,19 @@
 #!/bin/bash
 
-# --- Colors (Formatting Only) ---
-C_RED='\033[0;31m'
-C_GREEN='\033[0;32m'
-C_YELLOW='\033[0;33m'
-C_BLUE='\033[0;34m'
-C_NC='\033[0m' # No Color
+USE_COLOR=1
+if [ ! -t 1 ] || [ -n "$NO_COLOR" ]; then
+  USE_COLOR=0
+fi
+
+if [ "$USE_COLOR" -eq 0 ]; then
+  C_RED='' ; C_GREEN='' ; C_YELLOW='' ; C_BLUE='' ; C_NC=''
+else
+  C_RED='\033[0;31m'
+  C_GREEN='\033[0;32m'
+  C_YELLOW='\033[0;33m'
+  C_BLUE='\033[0;34m'
+  C_NC='\033[0m'
+fi
 
 # --- Log Functions (Formatting Only) ---
 log_pass() {

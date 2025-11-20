@@ -1,0 +1,56 @@
+---
+- name: Copy test suite and run main_bench on targets
+  hosts: hosts
+  become: yes
+  vars:
+    bench_remote_dir: /home/ansible/bench
+  tasks:
+    - name: Ensure jq is installed
+      package:
+        name: jq
+        state: present
+
+    - name: Ensure remote bench directory exists
+      file:
+        path: "{{ bench_remote_dir }}"
+        state: directory
+        mode: "0755"
+        owner: ansible
+        group: ansible
+
+    - name: Copy tests folder to host
+      copy:
+        src: ../tests/
+        dest: "{{ bench_remote_dir }}/tests/"
+        mode: "0755"
+        owner: ansible
+        group: ansible
+
+    - name: Copy main_bench.sh to host
+      copy:
+        src: ../main-bench.sh
+        dest: "{{ bench_remote_dir }}/main-bench.sh"
+        mode: "0755"
+        owner: ansible
+        group: ansible
+
+    - name: Run benchmark script
+      shell: bash main-bench.sh > output.log 2>&1
+      args:
+        chdir: "{{ bench_remote_dir }}"
+      become_user: ansible
+      register: bench_run
+      failed_when: false
+
+    - name: Show execution result
+      debug:
+        msg:
+          - "rc={{ bench_run.rc }}"
+          - "stdout={{ bench_run.stdout | default('') }}"
+          - "stderr={{ bench_run.stderr | default('') }}"
+
+    - name: Fetch log back to WSL
+      fetch:
+        src: "{{ bench_remote_dir }}/output.log"
+        dest: ./logs/main-bench/{{ inventory_hostname }}_output.log
+        flat: yes

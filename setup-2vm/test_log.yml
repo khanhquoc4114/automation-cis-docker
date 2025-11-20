@@ -14,5 +14,5 @@
     - name: Fetch log from host
       fetch:
         src: /home/ansible/output.log
-        dest: ./logs/{{ inventory_hostname }}_output.log
+        dest: ./logs/test-log/{{ inventory_hostname }}_output.log
         flat: yes
