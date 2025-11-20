@@ -3,7 +3,6 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cis_log.sh"
 
-# --- Check 6.1 ---
 check_6_1() {
     log_info "6.1 - Ensure that image sprawl is avoided (Manual)"
     log_cmd "Step 1 (as per PDF): docker images --quiet | xargs docker inspect --format '{{ .Id }}: Image={{ index .RepoTags 0 }}'"
@@ -34,7 +33,6 @@ check_6_1() {
     log_note "6.1 - Please manually review these lists for unused or old images."
 }
 
-# --- Check 6.2 ---
 check_6_2() {
     log_info "6.2 - Ensure that container sprawl is avoided (Manual)"
     log_cmd "Step 1: docker info --format '{{ .Containers }}'"
@@ -69,7 +67,6 @@ check_6_2() {
     fi
 }
 
-# --- Main Function ---
 main() {
     echo "================================================================="
     echo "  Running CIS Docker v1.8.0 - Section 6 Checks (Unaltered Mode) "

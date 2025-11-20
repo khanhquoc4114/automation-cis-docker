@@ -3,7 +3,6 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cis_log.sh"
 
-# --- Check 7.1 ---
 check_7_1() {
     log_info "7.1 - Ensure that the minimum number of manager nodes have been created in a swarm (Manual)"
     log_cmd "docker info --format '{{ .Swarm.Managers }}'"
@@ -21,7 +20,6 @@ check_7_1() {
     log_note "7.1 - Please manually verify this is the minimum odd number required for your fault tolerance."
 }
 
-# --- Check 7.2 ---
 check_7_2() {
     log_info "7.2 - Ensure that swarm services are bound to a specific host interface (Manual)"
     log_cmd "ss -lp | grep -iE ':2377|:7946'"
@@ -51,7 +49,6 @@ check_7_2() {
     log_note "7.2 - Please manually verify the listening addresses above."
 }
 
-# --- Check 7.3 ---
 check_7_3() {
     log_info "7.3 - Ensure that all Docker swarm overlay networks are encrypted (Manual)"
     log_cmd "docker network ls --filter driver=overlay --quiet | xargs docker network inspect --format '{{.Name}} {{ .Options }}'"
@@ -90,7 +87,6 @@ check_7_3() {
     fi
 }
 
-# --- Check 7.4 ---
 check_7_4() {
     log_info "7.4 - Ensure that Docker's secret management commands are used for managing secrets in a swarm cluster (Manual)"
     log_cmd "docker secret ls"
@@ -107,7 +103,6 @@ check_7_4() {
     docker secret ls 2>/dev/null
 }
 
-# --- Check 7.5 ---
 check_7_5() {
     log_info "7.5 - Ensure that swarm manager is run in auto-lock mode (Manual)"
     log_cmd "docker info --format '{{ .Swarm.Cluster.Spec.EncryptionConfig.AutoLockManagers }}'"
@@ -129,7 +124,6 @@ check_7_5() {
     log_note "7.5 - Please manually review if this setting is appropriate for your organization's policy."
 }
 
-# --- Check 7.6 ---
 check_7_6() {
     log_info "7.6 - Ensure that the swarm manager auto-lock key is rotated periodically (Manual)"
     log_cmd "(No command available)"
@@ -139,7 +133,6 @@ check_7_6() {
     log_note "7.6 - Please verify your organization's key rotation process."
 }
 
-# --- Check 7.7 ---
 check_7_7() {
     log_info "7.7 - Ensure that node certificates are rotated as appropriate (Manual)"
     log_cmd "docker info --format '{{ .Swarm.Cluster.Spec.CAConfig.NodeCertExpiry }}'"
@@ -162,7 +155,6 @@ check_7_7() {
     log_note "7.7 - Please manually verify this rotation period is appropriate for your environment."
 }
 
-# --- Check 7.8 ---
 check_7_8() {
     log_info "7.8 - Ensure that CA certificates are rotated as appropriate (Manual)"
     log_cmd "ls -l /var/lib/docker/swarm/certificates/swarm-root-ca.crt"
@@ -181,7 +173,6 @@ check_7_8() {
     log_note "7.8 - Please manually verify the file timestamp (Date) is in line with your rotation policy."
 }
 
-# --- Check 7.9 ---
 check_7_9() {
     log_info "7.9 - Ensure that management plane traffic is separated from data plane traffic (Manual)"
     log_cmd "docker node inspect --format '{{ .Status.Addr }}' self"
@@ -200,13 +191,11 @@ check_7_9() {
 }
 
 
-# --- Main Function ---
 main() {
     echo "================================================================="
     echo "  Running CIS Docker v1.8.0 - Section 7 Checks (Unaltered Mode) "
     echo "================================================================="
     
-    # --- Prerequisite Checks (Run once in main for user feedback) ---
     local prereq_fail=false
     if ! command -v docker &> /dev/null; then
         log_fail "FATAL: 'docker' command not found. Please install Docker."
@@ -218,7 +207,6 @@ main() {
         exit 1
     fi
 
-    # --- Swarm Active Check ---
     # Check if swarm is active before running any tests
     local swarm_status=$(docker info --format '{{ .Swarm.LocalNodeState }}' 2>/dev/null)
     
@@ -234,7 +222,6 @@ main() {
         echo "---"
     fi
     
-    # --- Run All Checks ---
     check_7_1
     echo "---"
     check_7_2

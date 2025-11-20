@@ -591,41 +591,23 @@ main() {
     
     # --- Run All Checks ---
     check_2_1
-    echo "---"
     check_2_2
-    echo "---"
     check_2_3
-    echo "---"
     check_2_4
-    echo "---"
     check_2_5
-    echo "---"
     check_2_6
-    echo "---"
     check_2_7
-    echo "---"
     check_2_8
-    echo "---"
     check_2_9
-    echo "---"
     check_2_10
-    echo "---"
     check_2_11
-    echo "---"
     check_2_12
-    echo "---"
     check_2_13
-    echo "---"
     check_2_14
-    echo "---"
     check_2_15
-    echo "---"
     check_2_16
-    echo "---"
     check_2_17
-    echo "---"
     check_2_18
-    echo "---"
     check_2_19
     
     echo "================================================================="

@@ -4,220 +4,141 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cis_log.sh"
 
 check_4() {
-  logit ""
-  local id="4"
-  local desc="Container Images and Build File"
-  checkHeader="$id - $desc"
-  info "$checkHeader"
-  startsectionjson "$id" "$desc"
+    log_info "4 - Container Images and Build File"
 }
 
 check_4_1() {
-  local id="4.1"
-  local desc="Ensure that a user for the container has been created (Automated)"
-  local remediation="You should ensure that the Dockerfile for each container image contains the information: USER <username or ID>. If there is no specific user created in the container base image, then make use of the useradd command to add a specific user before the USER instruction in the Dockerfile."
-  local remediationImpact="Running as a non-root user can present challenges where you wish to bind mount volumes from the underlying host. In this case, care should be taken to ensure that the user running the contained process can read and write to the bound directory, according to their requirements."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  # If container_users is empty, there are no running containers
-  if [ -z "$containers" ]; then
-    info -c "$check"
-    info "     * No containers running"
-    logcheckresult "INFO" "No containers running"
-    return
-  fi
-  # We have some containers running, set failure flag to 0. Check for Users.
-  fail=0
-  # Make the loop separator be a new-line in POSIX compliant fashion
-  set -f; IFS=$'
-  '
-  root_containers=""
-  for c in $containers; do
-    user=$(docker inspect --format 'User={{.Config.User}}' "$c")
-
-    if [ "$user" = "User=0" ] || [ "$user" = "User=root" ] || [ "$user" = "User=" ] || [ "$user" = "User=[]" ] || [ "$user" = "User=<no value>" ]; then
-      # If it's the first container, fail the test
-      if [ $fail -eq 0 ]; then
-        warn -s "$check"
-        warn "     * Running as root: $c"
-        root_containers="$root_containers $c"
-        fail=1
-        continue
-      fi
-      warn "     * Running as root: $c"
-      root_containers="$root_containers $c"
+    local check="4.1 - Ensure that a user for the container has been created"
+    
+    if [ -z "$containers" ]; then
+        log_info "$check - No containers running"
+        return
     fi
-  done
-  # We went through all the containers and found none running as root
-  if [ $fail -eq 0 ]; then
-    pass -s "$check"
-    logcheckresult "PASS"
-    return
-  fi
-  logcheckresult "WARN" "running as root" "$root_containers"
-  # Make the loop separator go back to space
-  set +f; unset IFS
+    
+    local fail=0
+    for c in $containers; do
+        user=$(docker inspect --format 'User={{.Config.User}}' "$c")
+        if [ "$user" = "User=0" ] || [ "$user" = "User=root" ] || [ "$user" = "User=" ] || [ "$user" = "User=[]" ]; then
+            [ $fail -eq 0 ] && log_warn "$check"
+            log_warn "  * Running as root: $c"
+            fail=1
+        fi
+    done
+    
+    [ $fail -eq 0 ] && log_pass "$check"
 }
 
 check_4_2() {
-  local id="4.2"
-  local desc="Ensure that containers use only trusted base images (Manual)"
-  local remediation="Configure and use Docker Content trust. View the history of each Docker image to evaluate its risk, dependent on the sensitivity of the application you wish to deploy using it. Scan Docker images for vulnerabilities at regular intervals."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
+  log_note "4.2 - Ensure that containers use only trusted base images (Manual)"
 }
 
 check_4_3() {
-  local id="4.3"
-  local desc="Ensure that unnecessary packages are not installed in the container (Manual)"
-  local remediation="You should not install anything within the container that is not required. You should consider using a minimal base image if you can. Some of the options available include BusyBox and Alpine. Not only can this trim your image size considerably, but there would also be fewer pieces of software which could contain vectors for attack."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
+  log_note "4.3 - Ensure that unnecessary packages are not installed in the container (Manual)"
 }
 
 check_4_4() {
-  local id="4.4"
-  local desc="Ensure images are scanned and rebuilt to include security patches (Manual)"
-  local remediation="Images should be re-built ensuring that the latest version of the base images are used, to keep the operating system patch level at an appropriate level. Once the images have been re-built, containers should be re-started making use of the updated images."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
+  log_note "4.4 - Ensure images are scanned and rebuilt to include security patches (Manual)"
 }
 
+check_4_5() {
+    local check="4.5 - Ensure Content trust for Docker is Enabled"
+    
+    if [ "$DOCKER_CONTENT_TRUST" = "1" ]; then
+        log_pass "$check"
+    else
+        log_warn "$check"
+    fi
+}
 
 check_4_6() {
-  local id="4.6"
-  local desc="Ensure that HEALTHCHECK instructions have been added to container images (Automated)"
-  local remediation="You should follow the Docker documentation and rebuild your container images to include the HEALTHCHECK instruction."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  fail=0
-  no_health_images=""
-  for img in $images; do
-    if docker inspect --format='{{.Config.Healthcheck}}' "$img" 2>/dev/null | grep -e "<nil>" >/dev/null 2>&1; then
-      if [ $fail -eq 0 ]; then
-        fail=1
-        warn -s "$check"
-      fi
-      imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
-      if ! [ "$imgName" = '[]' ]; then
-        warn "     * No Healthcheck found: $imgName"
-        no_health_images="$no_health_images $imgName"
-      else
-        warn "     * No Healthcheck found: $img"
-        no_health_images="$no_health_images $img"
-      fi
-    fi
-  done
-  if [ $fail -eq 0 ]; then
-    pass -s "$check"
-    logcheckresult "PASS"
-    return
-  fi
-  logcheckresult "WARN" "Images w/o HEALTHCHECK" "$no_health_images"
+    local check="4.6 - Ensure that HEALTHCHECK instructions have been added to container images"
+    local fail=0
+    
+    for img in $images; do
+        if docker inspect --format='{{.Config.Healthcheck}}' "$img" 2>/dev/null | grep -e "<nil>" >/dev/null 2>&1; then
+            [ $fail -eq 0 ] && log_warn "$check"
+            imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
+            [ "$imgName" = '[]' ] && imgName="$img"
+            log_warn "  * No Healthcheck found: $imgName"
+            fail=1
+        fi
+    done
+    
+    [ $fail -eq 0 ] && log_pass "$check"
 }
 
 check_4_7() {
-  local id="4.7"
-  local desc="Ensure update instructions are not used alone in the Dockerfile (Manual)"
-  local remediation="You should use update instructions together with install instructions and version pinning for packages while installing them. This prevent caching and force the extraction of the required versions. Alternatively, you could use the --no-cache flag during the docker build process to avoid using cached layers."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
+    local check="4.7 - Ensure update instructions are not used alone in the Dockerfile"
+    local fail=0
+    
+    for img in $images; do
+        if docker history "$img" 2>/dev/null | grep -e "update" >/dev/null 2>&1; then
+            [ $fail -eq 0 ] && log_info "$check"
+            imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
+            [ "$imgName" != '[]' ] && log_info "  * Update instruction found: $imgName"
+            fail=1
+        fi
+    done
+    
+    [ $fail -eq 0 ] && log_pass "$check"
+}
 
-  fail=0
-  update_images=""
-  for img in $images; do
-    if docker history "$img" 2>/dev/null | grep -e "update" >/dev/null 2>&1; then
-      if [ $fail -eq 0 ]; then
-        fail=1
-        info -c "$check"
-      fi
-      imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
-      if ! [ "$imgName" = '[]' ]; then
-        info "     * Update instruction found: $imgName"
-        update_images="$update_images $imgName"
-      fi
-    fi
-  done
-  if [ $fail -eq 0 ]; then
-    pass -c "$check"
-    logcheckresult "PASS"
-    return
-  fi
-  logcheckresult "INFO" "Update instructions found" "$update_images"
+check_4_8() {
+    log_note "4.8 - Ensure setuid and setgid permissions are removed (Manual)"
 }
 
 check_4_9() {
-  local id="4.9"
-  local desc="Ensure that COPY is used instead of ADD in Dockerfiles (Manual)"
-  local remediation="You should use COPY rather than ADD instructions in Dockerfiles."
-  local remediationImpact="Care needs to be taken in implementing this control if the application requires functionality that is part of the ADD instruction, for example, if you need to retrieve files from remote URLS."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  fail=0
-  add_images=""
-  for img in $images; do
-    if docker history --format "{{ .CreatedBy }}" --no-trunc "$img" | \
-      sed '$d' | grep -q 'ADD'; then
-      if [ $fail -eq 0 ]; then
-        fail=1
-        info -c "$check"
-      fi
-      imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
-      if ! [ "$imgName" = '[]' ]; then
-        info "     * ADD in image history: $imgName"
-        add_images="$add_images $imgName"
-      fi
-    fi
-  done
-  if [ $fail -eq 0 ]; then
-    pass -c "$check"
-    logcheckresult "PASS"
-    return
-  fi
-  logcheckresult "INFO" "Images using ADD" "$add_images"
+    local check="4.9 - Ensure that COPY is used instead of ADD in Dockerfiles"
+    local fail=0
+    
+    for img in $images; do
+        if docker history --format "{{ .CreatedBy }}" --no-trunc "$img" | sed '$d' | grep -q 'ADD'; then
+            [ $fail -eq 0 ] && log_info "$check"
+            imgName=$(docker inspect --format='{{.RepoTags}}' "$img" 2>/dev/null)
+            [ "$imgName" != '[]' ] && log_info "  * ADD in image history: $imgName"
+            fail=1
+        fi
+    done
+    
+    [ $fail -eq 0 ] && log_pass "$check"
 }
 
 check_4_10() {
-  local id="4.10"
-  local desc="Ensure secrets are not stored in Dockerfiles (Manual)"
-  local remediation="Do not store any kind of secrets within Dockerfiles. Where secrets are required during the build process, make use of a secrets management tool, such as the buildkit builder included with Docker."
-  local remediationImpact="A proper secrets management process will be required for Docker image building."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
+  log_note "4.10 - Ensure secrets are not stored in Dockerfiles (Manual)"
+}
 
-  note -c "$check"
-  logcheckresult "NOTE"
+check_4_11() {
+    log_note "4.11 - Ensure only verified packages are installed (Manual)"
 }
 
 check_4_12() {
-  local id="4.12"
-  local desc="Ensure all signed artifacts are validated (Manual)"
-  local remediation="Validate artifacts signatures before uploading to the package registry."
-  local remediationImpact="None."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
+  log_note "4.12 - Ensure all signed artifacts are validated (Manual)"
 }
 
 check_4_end() {
-  endsectionjson
+  echo ""
 }
+
+main (){
+  echo "================================================================="
+  echo "  Running CIS Docker v1.8.0 - Section 4 Checks (Unaltered Mode) "
+  echo "================================================================="
+  check_4
+  check_4_1
+  check_4_2
+  check_4_3
+  check_4_4
+  check_4_5
+  check_4_6
+  check_4_7
+  check_4_8
+  check_4_9
+  check_4_10
+  check_4_11
+  check_4_12
+  echo "================================================================="
+  echo "                  Section 4 Checks Complete                    "
+  echo "================================================================="
+}
+
+main
