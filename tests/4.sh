@@ -96,22 +96,6 @@ check_4_4() {
   logcheckresult "NOTE"
 }
 
-check_4_5() {
-  local id="4.5"
-  local desc="Ensure Content trust for Docker is Enabled (Automated)"
-  local remediation="Add DOCKER_CONTENT_TRUST variable to the /etc/environment file using command echo DOCKER_CONTENT_TRUST=1 | sudo tee -a /etc/environment."
-  local remediationImpact="This prevents users from working with tagged images unless they contain a signature."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  if [ "$DOCKER_CONTENT_TRUST" = "1" ]; then
-    pass -s "$check"
-    logcheckresult "PASS"
-    return
-  fi
-  warn -s "$check"
-  logcheckresult "WARN"
-}
 
 check_4_6() {
   local id="4.6"
@@ -178,18 +162,6 @@ check_4_7() {
   logcheckresult "INFO" "Update instructions found" "$update_images"
 }
 
-check_4_8() {
-  local id="4.8"
-  local desc="Ensure setuid and setgid permissions are removed (Manual)"
-  local remediation="You should allow setuid and setgid permissions only on executables which require them. You could remove these permissions at build time by adding the following command in your Dockerfile, preferably towards the end of the Dockerfile: RUN find / -perm /6000 -type f -exec chmod a-s {} ; || true"
-  local remediationImpact="The above command would break all executables that depend on setuid or setgid permissions including legitimate ones. You should therefore be careful to modify the command to suit your requirements so that it does not reduce the permissions of legitimate programs excessively. Because of this, you should exercise a degree of caution and examine all processes carefully before making this type of modification in order to avoid outages."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
-}
-
 check_4_9() {
   local id="4.9"
   local desc="Ensure that COPY is used instead of ADD in Dockerfiles (Manual)"
@@ -227,18 +199,6 @@ check_4_10() {
   local desc="Ensure secrets are not stored in Dockerfiles (Manual)"
   local remediation="Do not store any kind of secrets within Dockerfiles. Where secrets are required during the build process, make use of a secrets management tool, such as the buildkit builder included with Docker."
   local remediationImpact="A proper secrets management process will be required for Docker image building."
-  local check="$id - $desc"
-  starttestjson "$id" "$desc"
-
-  note -c "$check"
-  logcheckresult "NOTE"
-}
-
-check_4_11() {
-  local id="4.11"
-  local desc="Ensure only verified packages are installed (Manual)"
-  local remediation="You should use a secure package distribution mechanism of your choice to ensure the authenticity of software packages."
-  local remediationImpact="None."
   local check="$id - $desc"
   starttestjson "$id" "$desc"
 
