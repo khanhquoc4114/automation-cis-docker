@@ -1,15 +1,21 @@
 #!/bin/bash
 
+# Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 check_7_1() {
-    log_info "7.1 - Ensure that the minimum number of manager nodes have been created in a swarm (Manual)"
+    local id="7.1"
+    local desc="Ensure that the minimum number of manager nodes have been created in a swarm (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker info --format '{{ .Swarm.Managers }}'"
     
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.1 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -21,12 +27,14 @@ check_7_1() {
 }
 
 check_7_2() {
-    log_info "7.2 - Ensure that swarm services are bound to a specific host interface (Manual)"
+    local id="7.2"
+    local desc="Ensure that swarm services are bound to a specific host interface (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "ss -lp | grep -iE ':2377|:7946'"
     
     # Self-contained prerequisite check
     if ! command -v ss &> /dev/null; then
-        log_fail "7.2 - COMMAND NOT FOUND: 'ss' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -34,7 +42,7 @@ check_7_2() {
     local listen_addrs=$(ss -lpn | grep -iE ':(2377|7946)' || true)
     
     if [ -z "$listen_addrs" ]; then
-        log_warn "7.2 - Could not find listeners on port 2377 or 7946."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -42,20 +50,22 @@ check_7_2() {
     echo "$listen_addrs"
     
     if echo "$listen_addrs" | grep -qE '0\.0\.0\.0:|\*:'; then
-        log_warn "7.2 - Swarm services are listening on all interfaces (0.0.0.0 or *)."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "7.2 - Swarm services appear to be bound to specific interfaces."
+        add_summary "$id" "$desc" "PASS"
     fi
     log_note "7.2 - Please manually verify the listening addresses above."
 }
 
 check_7_3() {
-    log_info "7.3 - Ensure that all Docker swarm overlay networks are encrypted (Manual)"
+    local id="7.3"
+    local desc="Ensure that all Docker swarm overlay networks are encrypted (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker network ls --filter driver=overlay --quiet | xargs docker network inspect --format '{{.Name}} {{ .Options }}'"
     
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.3 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -63,7 +73,7 @@ check_7_3() {
     local overlay_networks=$(docker network ls --filter driver=overlay --quiet 2>/dev/null)
     
     if [ -z "$overlay_networks" ]; then
-        log_pass "7.3 - No overlay networks found."
+        add_summary "$id" "$desc" "PASS"
         return
     fi
 
@@ -75,25 +85,27 @@ check_7_3() {
         local net_info=$(docker network inspect $net_id --format '{{.Name}} {{ .Options }}' 2>/dev/null)
         
         if ! echo "$net_info" | grep -q "encrypted:true"; then
-            log_warn "7.3 - Network '$net_id' (Name: $(echo $net_info | awk '{print $1}')) is NOT encrypted."
+            add_summary "$id" "$desc" "FAIL"
             all_encrypted=false
         else
-            log_pass "7.3 - Network '$net_id' (Name: $(echo $net_info | awk '{print $1}')) is encrypted."
+            add_summary "$id" "$desc" "PASS"
         fi
     done
     
     if [ "$all_encrypted" = "true" ]; then
-        log_pass "7.3 - All overlay networks found are encrypted."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 check_7_4() {
-    log_info "7.4 - Ensure that Docker's secret management commands are used for managing secrets in a swarm cluster (Manual)"
+    local id="7.4"
+    local desc="Ensure that Docker's secret management commands are used for managing secrets in a swarm cluster (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker secret ls"
     
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.4 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -104,12 +116,14 @@ check_7_4() {
 }
 
 check_7_5() {
-    log_info "7.5 - Ensure that swarm manager is run in auto-lock mode (Manual)"
+    local id="7.5"
+    local desc="Ensure that swarm manager is run in auto-lock mode (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker info --format '{{ .Swarm.Cluster.Spec.EncryptionConfig.AutoLockManagers }}'"
     
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.5 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -117,15 +131,17 @@ check_7_5() {
     local autolock=$(docker info --format '{{ .Swarm.Cluster.Spec.EncryptionConfig.AutoLockManagers }}' 2>/dev/null)
 
     if [ "$autolock" = "true" ]; then
-        log_pass "7.5 - Swarm auto-lock is enabled."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "7.5 - Swarm auto-lock is disabled (Default)."
+        add_summary "$id" "$desc" "FAIL"
     fi
     log_note "7.5 - Please manually review if this setting is appropriate for your organization's policy."
 }
 
 check_7_6() {
-    log_info "7.6 - Ensure that the swarm manager auto-lock key is rotated periodically (Manual)"
+    local id="7.6"
+    local desc="Ensure that the swarm manager auto-lock key is rotated periodically (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "(No command available)"
     
     log_note "7.6 - This is a procedural check."
@@ -134,12 +150,14 @@ check_7_6() {
 }
 
 check_7_7() {
-    log_info "7.7 - Ensure that node certificates are rotated as appropriate (Manual)"
+    local id="7.7"
+    local desc="Ensure that node certificates are rotated as appropriate (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker info --format '{{ .Swarm.Cluster.Spec.CAConfig.NodeCertExpiry }}'"
 
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.7 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -156,13 +174,15 @@ check_7_7() {
 }
 
 check_7_8() {
-    log_info "7.8 - Ensure that CA certificates are rotated as appropriate (Manual)"
+    local id="7.8"
+    local desc="Ensure that CA certificates are rotated as appropriate (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "ls -l /var/lib/docker/swarm/certificates/swarm-root-ca.crt"
     
     local ca_cert_file="/var/lib/docker/swarm/certificates/swarm-root-ca.crt"
     
     if [ ! -f "$ca_cert_file" ]; then
-        log_warn "7.8 - CA certificate file not found at $ca_cert_file"
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -174,12 +194,14 @@ check_7_8() {
 }
 
 check_7_9() {
-    log_info "7.9 - Ensure that management plane traffic is separated from data plane traffic (Manual)"
+    local id="7.9"
+    local desc="Ensure that management plane traffic is separated from data plane traffic (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "docker node inspect --format '{{ .Status.Addr }}' self"
     
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "7.9 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -243,6 +265,40 @@ main() {
     echo "================================================================="
     echo "                  Section 7 Checks Complete                    "
     echo "================================================================="
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "7 - Docker Swarm Configuration"
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+        
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${C_BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${C_GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${C_RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${C_BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 7 finished."
+    echo "=========================================="
 }
 
 # Execute main function

@@ -1,16 +1,22 @@
 #!/bin/bash
 
+# Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 check_6_1() {
-    log_info "6.1 - Ensure that image sprawl is avoided (Manual)"
+    local id="6.1"
+    local desc="Ensure that image sprawl is avoided (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "Step 1 (as per PDF): docker images --quiet | xargs docker inspect --format '{{ .Id }}: Image={{ index .RepoTags 0 }}'"
     log_cmd "Step 2 (as per PDF): docker images"
 
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "6.1 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -34,14 +40,16 @@ check_6_1() {
 }
 
 check_6_2() {
-    log_info "6.2 - Ensure that container sprawl is avoided (Manual)"
+    local id="6.2"
+    local desc="Ensure that container sprawl is avoided (Manual)"
+    add_summary "$id" "$desc" "INFO"
     log_cmd "Step 1: docker info --format '{{ .Containers }}'"
     log_cmd "Step 2: docker info --format '{{ .ContainersStopped }}'"
     log_cmd "Step 2: docker info --format '{{ .ContainersRunning }}'"
 
     # Self-contained prerequisite check
     if ! command -v docker &> /dev/null; then
-        log_fail "6.2 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -61,9 +69,9 @@ check_6_2() {
     log_note "6.2 - Stopped Containers: $stopped_containers"
     
     if [ "$stopped_containers" -gt "$running_containers" ] && [ "$stopped_containers" -gt 10 ]; then
-         log_warn "6.2 - There is a high number of stopped containers. Please review manually."
+         add_summary "$id" "$desc" "FAIL"
     else
-         log_note "6.2 - Please manually review if the number of stopped containers is excessive for your environment."
+         add_summary "$id" "$desc" "INFO"
     fi
 }
 
@@ -93,6 +101,41 @@ main() {
     echo "================================================================="
     echo "                  Section 6 Checks Complete                    "
     echo "================================================================="
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "6 - Docker Security Operations"
+    
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+        
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 6 finished."
+    echo "=========================================="
 }
 
 # Execute main function

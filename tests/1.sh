@@ -1,6 +1,11 @@
 #!/bin/bash
+
+# # Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 # --- Helper Functions ---
 get_service_file() {
@@ -38,10 +43,10 @@ check_1_1_1() {
   fi
 
   if mountpoint -q -- "$docker_root_dir" >/dev/null 2>&1; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_warn "$id - $desc"
+  add_summary "$id" "$desc" "FAIL"
 }
 
 check_1_1_2() {
@@ -55,10 +60,10 @@ check_1_1_2() {
   docker_users=$(printf "%s" "$docker_users" | awk -F: '{print $4}')
 
   if [ -n "$docker_users" ]; then
-    log_info "$id - $desc"
+    add_summary "$id" "$desc" "INFO"
     echo "      * Docker group users: $docker_users"
   else
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -69,15 +74,15 @@ check_1_1_3() {
   file="/usr/bin/dockerd"
   if command -v auditctl >/dev/null 2>&1; then
     if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
   fi
   if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_warn "$id - $desc"
+  add_summary "$id" "$desc" "FAIL"
 }
 
 check_1_1_4() {
@@ -87,15 +92,15 @@ check_1_1_4() {
   file="/run/containerd"
   if command -v auditctl >/dev/null 2>&1; then
     if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
   fi
   if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_warn "$id - $desc"
+  add_summary "$id" "$desc" "FAIL"
 }
 
 check_1_1_5() {
@@ -106,18 +111,18 @@ check_1_1_5() {
   if [ -d "$directory" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$directory" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$directory" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - Directory not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_6() {
@@ -128,18 +133,18 @@ check_1_1_6() {
   if [ -d "$directory" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$directory" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$directory" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - Directory not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_7() {
@@ -150,18 +155,18 @@ check_1_1_7() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_8() {
@@ -172,18 +177,18 @@ check_1_1_8() {
   if [ -e "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_9() {
@@ -194,18 +199,18 @@ check_1_1_9() {
   if [ -e "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_10() {
@@ -216,18 +221,18 @@ check_1_1_10() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_11() {
@@ -238,18 +243,18 @@ check_1_1_11() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_12() {
@@ -260,18 +265,18 @@ check_1_1_12() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_13() {
@@ -282,18 +287,18 @@ check_1_1_13() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_14() {
@@ -304,18 +309,18 @@ check_1_1_14() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_15() {
@@ -326,18 +331,18 @@ check_1_1_15() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_16() {
@@ -348,18 +353,18 @@ check_1_1_16() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_17() {
@@ -370,18 +375,18 @@ check_1_1_17() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_1_18() {
@@ -392,32 +397,32 @@ check_1_1_18() {
   if [ -f "$file" ]; then
     if command -v auditctl >/dev/null 2>&1; then
       if auditctl -l 2>/dev/null | grep "$file" >/dev/null 2>&1; then
-        log_pass "$id - $desc"
+        add_summary "$id" "$desc" "PASS"
         return
       fi
     fi
     if [ -f "$auditrules" ] && grep -s "$file" "$auditrules" 2>/dev/null | grep "^[^#;]" >/dev/null 2>&1; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     return
   fi
-  log_info "$id - $desc - File not found"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_2() {
   echo ""
   local id="1.2"
   local desc="General Configuration"
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_2_1() {
   local id="1.2.1"
   local desc="Ensure the container host has been Hardened (Manual)"
   
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_1_2_2() {
@@ -430,11 +435,11 @@ check_1_2_2() {
   
   do_version_check "$docker_current_version" "$docker_version"
   if [ $? -eq 11 ]; then
-    log_info "$id - $desc"
+    add_summary "$id" "$desc" "INFO"
     echo "       * Using $docker_version, verify if it is up to date"
     return
   fi
-  log_pass "$id - $desc"
+  add_summary "$id" "$desc" "PASS"
   echo "       * Using $docker_version which is current"
 }
 
@@ -442,6 +447,26 @@ main (){
   echo "================================================================="
   echo "  Running CIS Docker v1.8.0 - Section 1 Checks (Unaltered Mode) "
   echo "================================================================="
+   local prereq_fail=false
+    if ! command -v docker &> /dev/null; then
+        log_fail "FATAL: 'docker' command not found. Please install Docker."
+        prereq_fail=true
+    fi
+    if ! command -v jq &> /dev/null; then
+        log_fail "FATAL: 'jq' command not found. Please install 'jq' to parse JSON files."
+        prereq_fail=true
+    fi
+    
+    local initial_docker_cmd=$(ps -ef | grep 'dockerd' | grep -v 'grep' || true)
+    if [ -z "$initial_docker_cmd" ]; then
+        log_fail "FATAL: No 'dockerd' process is running. Cannot proceed."
+        prereq_fail=true
+    fi
+    
+    if [ "$prereq_fail" = "true" ]; then
+        echo "Exiting due to missing prerequisites."
+        exit 1
+    fi
   check_1_1
   check_1_1_1
   check_1_1_2
@@ -467,6 +492,40 @@ main (){
   echo "================================================================="
   echo "                  Section 1 Checks Complete                    "
   echo "================================================================="  
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "1 - Host Configuration"
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+        
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${C_BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${C_GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${C_RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${C_BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${C_YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 1 finished."
+    echo "=========================================="
 }
 
 main

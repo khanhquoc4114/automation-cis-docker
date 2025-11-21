@@ -1,38 +1,42 @@
 #!/bin/bash
 
+# Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 # --- Check 2.1 ---
 check_2_1() {
-    log_info "2.1 - Run the Docker daemon as a non-root user, if possible (Manual)"
-    log_cmd "ps -fe | grep 'dockerd'"
+    local id="2.1"
+    local desc="Run the Docker daemon as a non-root user, if possible (Manual)"
     
     # Self-contained command
     local DOCKER_CMD_LINE=$(ps -fe | grep 'dockerd' | grep -v 'grep' || true)
 
     if [ -z "$DOCKER_CMD_LINE" ]; then
-        log_fail "2.1 - NOT FOUND: No 'dockerd' process is running."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
-    local user=$(echo "$DOCKER_CMD_LINE" | awk '{print $1}')
+    local user=$(echo "$DOCKER_CMD_LINE" | awk '{print }')
 
     if [ "$user" = "root" ]; then
-        log_note "2.1 - Docker daemon is running as 'root'."
-        log_note "     (This is the default. CIS recommends rootless mode if possible. Please verify manually.)"
+        add_summary "$id" "$desc" "INFO"
+        echo "     (This is the default. CIS recommends rootless mode if possible. Please verify manually.)"
     else
-        log_pass "2.1 - Docker daemon is running as non-root user: '$user'."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.2 ---
 check_2_2() {
-    log_info "2.2 - Ensure network traffic is restricted between containers on the default bridge (Manual)"
-    log_cmd "docker network ls --quiet | xargs docker network inspect --format '{{.Name }}: {{ .Options }}'"
+    local id="2.2"
+    local desc="Ensure network traffic is restricted between containers on the default bridge (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.2 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -40,19 +44,19 @@ check_2_2() {
     local icc_setting=$(docker network ls --quiet | xargs docker network inspect --format '{{.Name }}: {{ .Options }}' 2>/dev/null | grep '^bridge:')
 
     if echo "$icc_setting" | grep -q "com.docker.network.bridge.enable_icc:false"; then
-        log_pass "2.2 - Inter-container communication (icc=false) is restricted on the default bridge."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.2 - Inter-container communication (icc) is allowed on the default bridge (Default)."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.3 ---
 check_2_3() {
-    log_info "2.3 - Ensure the logging level is set to 'info' (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.3"
+    local desc="Ensure the logging level is set to 'info' (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.3 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -69,31 +73,31 @@ check_2_3() {
 
     if [ -n "$cmd_log_level" ]; then
         if [ "$cmd_log_level" = "info" ]; then
-            log_pass "2.3 - Logging level is set to 'info' via command line flag."
+            add_summary "$id" "$desc" "PASS"
         else
-            log_warn "2.3 - Logging level is set to '$cmd_log_level' via command line flag, not 'info'."
+            add_summary "$id" "$desc" "FAIL"
         fi
         return
     fi
     
     if [ "$json_log_level" != "null" ]; then
         if [ "$json_log_level" = "info" ]; then
-            log_pass "2.3 - Logging level is set to 'info' in $DAEMON_JSON_FILE."
+            add_summary "$id" "$desc" "PASS"
         else
-            log_warn "2.3 - Logging level is set to '$json_log_level' in $DAEMON_JSON_FILE, not 'info'."
+            add_summary "$id" "$desc" "FAIL"
         fi
     else
-        log_pass "2.3 - Logging level is not set, using default 'info'."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.4 ---
 check_2_4() {
-    log_info "2.4 - Ensure Docker is allowed to make changes to iptables (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.4"
+    local desc="Ensure Docker is allowed to make changes to iptables (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.4 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -109,21 +113,21 @@ check_2_4() {
     local cmd_iptables=$(echo "$DOCKER_CMD_LINE" | grep -o 'iptables=false')
 
     if [ -n "$cmd_iptables" ]; then
-        log_warn "2.4 - Docker is forbidden from changing iptables via command line flag (iptables=false)."
+        add_summary "$id" "$desc" "FAIL"
     elif [ "$json_iptables" = "false" ]; then
-        log_warn "2.4 - Docker is forbidden from changing iptables in $DAEMON_JSON_FILE (iptables: false)."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.4 - Docker is allowed to change iptables (Default: true)."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.5 ---
 check_2_5() {
-    log_info "2.5 - Ensure insecure registries are not used (Manual)"
-    log_cmd "docker info --format '{{json .RegistryConfig.InsecureRegistryCIDRs}}'"
+    local id="2.5"
+    local desc="Ensure insecure registries are not used (Manual)"
 
     if ! command -v docker &> /dev/null; then
-        log_fail "2.5 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -133,19 +137,19 @@ check_2_5() {
     local non_default=$(echo "$registries" | grep -Ev '^(127\.0\.0\.0/8|::1/128)$')
 
     if [ -z "$non_default" ]; then
-        log_pass "2.5 - No non-default insecure registries are configured."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.5 - Insecure registries are in use: $non_default"
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.6 ---
 check_2_6() {
-    log_info "2.6 - Ensure aufs storage driver is not used (Manual)"
-    log_cmd "docker info --format '{{ .Driver }}'"
+    local id="2.6"
+    local desc="Ensure aufs storage driver is not used (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.6 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -153,19 +157,19 @@ check_2_6() {
     local driver=$(docker info --format '{{ .Driver }}' 2>/dev/null)
     
     if [ "$driver" = "aufs" ]; then
-        log_warn "2.6 - 'aufs' storage driver is in use. This is deprecated."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.6 - 'aufs' storage driver is not in use. (Current driver: $driver)"
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.7 ---
 check_2_7() {
-    log_info "2.7 - Ensure devicemapper storage driver is not used (Manual)"
-    log_cmd "docker info --format '{{ .Driver }}'"
+    local id="2.7"
+    local desc="Ensure devicemapper storage driver is not used (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.7 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -173,20 +177,20 @@ check_2_7() {
     local driver=$(docker info --format '{{ .Driver }}' 2>/dev/null)
     
     if [ "$driver" = "devicemapper" ]; then
-        log_warn "2.7 - 'devicemapper' storage driver is in use. This is removed in v25.0."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.7 - 'devicemapper' storage driver is not in use. (Current driver: $driver)"
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.8 ---
 check_2_8() {
-    log_info "2.8 - Ensure TLS authentication for Docker daemon is configured (Manual)"
-    log_cmd "Check dockerd process flags for '-H tcp://' and TLS settings"
+    local id="2.8"
+    local desc="Ensure TLS authentication for Docker daemon is configured (Manual)"
 
     # Check if docker command exists
     if ! command -v docker &> /dev/null; then
-        log_fail "2.8 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -206,11 +210,11 @@ check_2_8() {
 
     # If not listening on TCP, pass the check
     if [ "$is_tcp_host" = "false" ]; then
-        log_pass "2.8 - Docker daemon is not configured to listen on TCP."
+        add_summary "$id" "$desc" "PASS"
         return
     fi
 
-    log_note "2.8 - Docker daemon is listening on TCP. Checking TLS settings..."
+    add_summary "$id" "$desc" "INFO"
 
     # Check TLS flags from command line
     local cmd_tlsverify=$(echo "$DOCKER_CMD_LINE" | grep -o -- 'tlsverify')
@@ -233,20 +237,20 @@ check_2_8() {
     # Verify that TLS is fully configured
     if { [ -n "$cmd_tlsverify" ] && [ -n "$cmd_tlscacert" ] && [ -n "$cmd_tlscert" ] && [ -n "$cmd_tlskey" ]; } || \
        { [ "$json_tlsverify" = "true" ] && [ -n "$json_tlscacert" ] && [ -n "$json_tlscert" ] && [ -n "$json_tlskey" ]; }; then
-        log_pass "2.8 - TLS verification is enabled and all certificates are configured."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.8 - Docker daemon is listening on TCP but TLS is not fully configured (missing tlsverify or certificates)."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 
 # --- Check 2.9 ---
 check_2_9() {
-    log_info "2.9 - Ensure the default ulimit is configured appropriately (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.9"
+    local desc="Ensure the default ulimit is configured appropriately (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.9 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -261,23 +265,23 @@ check_2_9() {
     fi
 
     if [ -n "$cmd_ulimit" ]; then
-        log_pass "2.9 - Default ulimit is set via command line flag."
-        log_note "     Please verify settings manually: $(echo "$DOCKER_CMD_LINE" | grep -o 'default-ulimit=[^ ]*')"
+        add_summary "$id" "$desc" "PASS"
+        echo "     Please verify settings manually: $(echo "$DOCKER_CMD_LINE" | grep -o 'default-ulimit=[^ ]*')"
     elif [ "$json_ulimit" != "null" ] && [ "$json_ulimit" != "{}" ]; then
-        log_pass "2.9 - Default ulimit is set in $DAEMON_JSON_FILE."
-        log_note "     Please verify settings manually: $json_ulimit"
+        add_summary "$id" "$desc" "PASS"
+        echo "     Please verify settings manually: $json_ulimit"
     else
-        log_warn "2.9 - Default ulimit is not configured."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.10 ---
 check_2_10() {
-    log_info "2.10 - Enable user namespace support (Manual)"
-    log_cmd "docker info --format '{{ .SecurityOptions }}'"
+    local id="2.10"
+    local desc="Enable user namespace support (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.10 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -285,19 +289,19 @@ check_2_10() {
     local userns=$(docker info --format '{{ .SecurityOptions }}' 2>/dev/null | grep 'userns')
     
     if [ -n "$userns" ]; then
-        log_pass "2.10 - User namespace support (userns) is enabled."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.10 - User namespace support (userns) is not enabled."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.11 ---
 check_2_11() {
-    log_info "2.11 - Ensure the default cgroup usage has been confirmed (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.11"
+    local desc="Ensure the default cgroup usage has been confirmed (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.11 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -312,27 +316,27 @@ check_2_11() {
     fi
 
     if [ -n "$cmd_cgroup_parent" ]; then
-        log_note "2.11 - Custom cgroup parent set via command line: $cmd_cgroup_parent"
-        log_note "       Please confirm this is appropriate for your environment."
+        add_summary "$id" "$desc" "INFO"
+        echo "       Please confirm this is appropriate for your environment."
     elif [ "$json_cgroup_parent" != "null" ]; then
-        log_note "2.11 - Custom cgroup parent set in $DAEMON_JSON_FILE: $json_cgroup_parent"
-        log_note "       Please confirm this is appropriate for your environment."
+        add_summary "$id" "$desc" "INFO"
+        echo "       Please confirm this is appropriate for your environment."
     else
-        log_pass "2.11 - Default cgroup parent is in use."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.12 ---
 check_2_12() {
-    log_info "2.12 - Ensure base device size is not changed until needed (Manual)"
-    log_cmd "Check storage driver and storage-opts"
+    local id="2.12"
+    local desc="Ensure base device size is not changed until needed (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.12 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     if ! command -v jq &> /dev/null; then
-        log_fail "2.12 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
 
@@ -342,7 +346,7 @@ check_2_12() {
 
     local driver=$(docker info --format '{{ .Driver }}' 2>/dev/null)
     if [ "$driver" != "devicemapper" ]; then
-        log_pass "2.12 - N/A: Storage driver is not 'devicemapper' (Current: $driver)."
+        add_summary "$id" "$desc" "PASS"
         return
     fi
     
@@ -353,21 +357,21 @@ check_2_12() {
     fi
 
     if [ -n "$cmd_base_size" ]; then
-        log_warn "2.12 - 'dm.basesize' is set via command line: $cmd_base_size. Ensure this is needed."
+        add_summary "$id" "$desc" "FAIL"
     elif [ -n "$json_base_size" ]; then
-        log_warn "2.12 - 'dm.basesize' is set in $DAEMON_JSON_FILE: $json_base_size. Ensure this is needed."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.12 - 'dm.basesize' is not set (using default 10G)."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.13 ---
 check_2_13() {
-    log_info "2.13 - Ensure that authorization for Docker client commands is enabled (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.13"
+    local desc="Ensure that authorization for Docker client commands is enabled (Manual)"
 
     if ! command -v jq &> /dev/null; then
-        log_fail "2.13 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -382,21 +386,21 @@ check_2_13() {
     fi
 
     if [ -n "$cmd_auth_plugin" ]; then
-        log_pass "2.13 - Authorization plugin is enabled via command line: $cmd_auth_plugin"
+        add_summary "$id" "$desc" "PASS"
     elif [ "$json_auth_plugin" != "null" ] && [ "$json_auth_plugin" != "[]" ]; then
-        log_pass "2.13 - Authorization plugin is enabled in $DAEMON_JSON_FILE: $json_auth_plugin"
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.13 - No authorization plugin is enabled."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.14 ---
 check_2_14() {
-    log_info "2.14 - Ensure centralized and remote logging is configured (Manual)"
-    log_cmd "docker info --format '{{ .LoggingDriver }}'"
+    local id="2.14"
+    local desc="Ensure centralized and remote logging is configured (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.14 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -404,19 +408,19 @@ check_2_14() {
     local log_driver=$(docker info --format '{{ .LoggingDriver }}' 2>/dev/null)
     
     if [ "$log_driver" = "json-file" ]; then
-        log_warn "2.14 - Logging driver is 'json-file' (default, not centralized)."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.14 - Logging driver is set to '$log_driver'."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
 # --- Check 2.15 ---
 check_2_15() {
-    log_info "2.15 - Ensure containers are restricted from acquiring new privileges (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.15"
+    local desc="Ensure containers are restricted from acquiring new privileges (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.15 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -431,25 +435,25 @@ check_2_15() {
     fi
 
     if [ -n "$cmd_no_new_priv" ]; then
-        log_pass "2.15 - 'no-new-privileges' is enabled via command line flag."
+        add_summary "$id" "$desc" "PASS"
     elif [ "$json_no_new_priv" = "true" ]; then
-        log_pass "2.15 - 'no-new-privileges' is enabled in $DAEMON_JSON_FILE."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.15 - 'no-new-privileges' is not enabled (Default: false)."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.16 ---
 check_2_16() {
-    log_info "2.16 - Ensure live restore is enabled (Manual)"
-    log_cmd "docker info --format '{{ .LiveRestoreEnabled }}'"
+    local id="2.16"
+    local desc="Ensure live restore is enabled (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.16 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     if ! command -v jq &> /dev/null; then
-        log_fail "2.16 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -465,19 +469,19 @@ check_2_16() {
     fi
     
     if [ "$live_restore_info" = "true" ] || [ "$json_live_restore" = "true" ]; then
-        log_pass "2.16 - Live restore is enabled."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.16 - Live restore is not enabled (Default: false)."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.17 ---
 check_2_17() {
-    log_info "2.17 - Ensure Userland Proxy is Disabled (Manual)"
-    log_cmd "Check dockerd process flags and /etc/docker/daemon.json"
+    local id="2.17"
+    local desc="Ensure Userland Proxy is Disabled (Manual)"
     
     if ! command -v jq &> /dev/null; then
-        log_fail "2.17 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -492,25 +496,25 @@ check_2_17() {
     fi
 
     if [ -n "$cmd_userland_proxy" ]; then
-        log_pass "2.17 - Userland proxy is disabled via command line flag."
+        add_summary "$id" "$desc" "PASS"
     elif [ "$json_userland_proxy" = "false" ]; then
-        log_pass "2.17 - Userland proxy is disabled in $DAEMON_JSON_FILE."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.17 - Userland proxy is enabled (Default: true)."
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.18 ---
 check_2_18() {
-    log_info "2.18 - Ensure that a daemon-wide custom seccomp profile is applied if appropriate (Manual)"
-    log_cmd "docker info --format '{{ .SecurityOptions }}'"
+    local id="2.18"
+    local desc="Ensure that a daemon-wide custom seccomp profile is applied if appropriate (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.18 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     if ! command -v jq &> /dev/null; then
-        log_fail "2.18 - COMMAND NOT FOUND: 'jq' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -527,25 +531,25 @@ check_2_18() {
     local info_seccomp=$(docker info --format '{{ .SecurityOptions }}' 2>/dev/null | grep 'seccomp')
     
     if [ -n "$cmd_seccomp" ]; then
-        log_note "2.18 - Custom seccomp profile set via command line: $cmd_seccomp"
-        log_note "       Please confirm this is appropriate for your environment."
+        add_summary "$id" "$desc" "INFO"
+        echo "       Please confirm this is appropriate for your environment."
     elif [ "$json_seccomp" != "null" ]; then
-         log_note "2.18 - Custom seccomp profile set in $DAEMON_JSON_FILE: $json_seccomp"
-         log_note "       Please confirm this is appropriate for your environment."
+         add_summary "$id" "$desc" "INFO"
+         echo "       Please confirm this is appropriate for your environment."
     elif echo "$info_seccomp" | grep -q 'default'; then
-        log_pass "2.18 - Default seccomp profile is in use."
+        add_summary "$id" "$desc" "PASS"
     else
-        log_warn "2.18 - Could not determine seccomp profile. (Value: $info_seccomp)"
+        add_summary "$id" "$desc" "FAIL"
     fi
 }
 
 # --- Check 2.19 ---
 check_2_19() {
-    log_info "2.19 - Ensure that experimental features are not implemented in production (Manual)"
-    log_cmd "docker version --format '{{ .Server.Experimental }}'"
+    local id="2.19"
+    local desc="Ensure that experimental features are not implemented in production (Manual)"
     
     if ! command -v docker &> /dev/null; then
-        log_fail "2.19 - COMMAND NOT FOUND: 'docker' is not installed."
+        add_summary "$id" "$desc" "FAIL"
         return
     fi
     
@@ -553,9 +557,9 @@ check_2_19() {
     local experimental=$(docker version --format '{{ .Server.Experimental }}' 2>/dev/null)
     
     if [ "$experimental" = "true" ]; then
-        log_warn "2.19 - Experimental features are enabled on the daemon."
+        add_summary "$id" "$desc" "FAIL"
     else
-        log_pass "2.19 - Experimental features are disabled (Default: false)."
+        add_summary "$id" "$desc" "PASS"
     fi
 }
 
@@ -613,6 +617,40 @@ main() {
     echo "================================================================="
     echo "                  Section 2 Checks Complete                    "
     echo "================================================================="
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "2 - Docker Daemon Configuration"
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+     
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${C_BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${C_GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${C_RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${C_BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${C_YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 2 finished."
+    echo "=========================================="
 }
 
 # Execute main function

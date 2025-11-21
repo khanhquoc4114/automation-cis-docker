@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 # --- Helper Functions ---
 get_service_file() {
@@ -38,14 +43,14 @@ check_3_1() {
   file=$(get_service_file docker.service)
   if [ -f "$file" ]; then
     if [ "$(stat -c %u%g "$file")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * File not found"
 }
 
@@ -56,14 +61,14 @@ check_3_2() {
   file=$(get_service_file docker.service)
   if [ -f "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 644 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * File not found"
 }
 
@@ -74,14 +79,14 @@ check_3_3() {
   file=$(get_service_file docker.socket)
   if [ -f "$file" ]; then
     if [ "$(stat -c %u%g "$file")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * File not found"
 }
 
@@ -92,14 +97,14 @@ check_3_4() {
   file=$(get_service_file docker.socket)
   if [ -f "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 644 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * File not found"
 }
 
@@ -110,14 +115,14 @@ check_3_5() {
   directory="/etc/docker"
   if [ -d "$directory" ]; then
     if [ "$(stat -c %u%g "$directory")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong ownership for $directory"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * Directory not found"
 }
 
@@ -128,14 +133,14 @@ check_3_6() {
   directory="/etc/docker"
   if [ -d "$directory" ]; then
     if [ "$(stat -c %a "$directory")" -le 755 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong permissions for $directory"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * Directory not found"
 }
 
@@ -153,14 +158,14 @@ check_3_7() {
       fi
     done
     if [ $fail -eq 1 ]; then
-      log_warn "$id - $desc"
+      add_summary "$id" "$desc" "FAIL"
       echo "     * Wrong ownership for $directory"
       return
     fi
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * Directory not found"
 }
 
@@ -178,14 +183,14 @@ check_3_8() {
       fi
     done
     if [ $fail -eq 1 ]; then
-      log_warn "$id - $desc"
+      add_summary "$id" "$desc" "FAIL"
       echo "     * Wrong permissions for $directory"
       return
     fi
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * Directory not found"
 }
 
@@ -199,14 +204,14 @@ check_3_9() {
   fi
   if [ -n "$tlscacert" ] && [ -f "$tlscacert" ]; then
     if [ "$(stat -c %u%g "$tlscacert")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "     * Wrong ownership for $tlscacert"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "     * No TLS CA certificate found"
 }
 
@@ -220,14 +225,14 @@ check_3_10() {
   fi
   if [ -n "$tlscacert" ] && [ -f "$tlscacert" ]; then
     if [ "$(stat -c %a "$tlscacert")" -le 444 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $tlscacert"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * No TLS CA certificate found"
 }
 
@@ -241,14 +246,14 @@ check_3_11() {
   fi
   if [ -n "$tlscert" ] && [ -f "$tlscert" ]; then
     if [ "$(stat -c %u%g "$tlscert")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $tlscert"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * No TLS Server certificate found"
 }
 
@@ -262,14 +267,14 @@ check_3_12() {
   fi
   if [ -n "$tlscert" ] && [ -f "$tlscert" ]; then
     if [ "$(stat -c %a "$tlscert")" -le 444 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $tlscert"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * No TLS Server certificate found"
 }
 
@@ -283,14 +288,14 @@ check_3_13() {
   fi
   if [ -n "$tlskey" ] && [ -f "$tlskey" ]; then
     if [ "$(stat -c %u%g "$tlskey")" -eq 00 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $tlskey"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * No TLS Key found"
 }
 
@@ -304,14 +309,14 @@ check_3_14() {
   fi
   if [ -n "$tlskey" ] && [ -f "$tlskey" ]; then
     if [ "$(stat -c %a "$tlskey")" -eq 400 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $tlskey"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * No TLS Key found"
 }
 
@@ -322,14 +327,14 @@ check_3_15() {
   file="/var/run/docker.sock"
   if [ -S "$file" ]; then
     if [ "$(stat -c %U:%G "$file")" = 'root:docker' ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -340,14 +345,14 @@ check_3_16() {
   file="/var/run/docker.sock"
   if [ -S "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 660 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -358,14 +363,14 @@ check_3_17() {
   file="/etc/docker/daemon.json"
   if [ -f "$file" ]; then
     if [ "$(stat -c %U:%G "$file")" = 'root:root' ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -376,14 +381,14 @@ check_3_18() {
   file="/etc/docker/daemon.json"
   if [ -f "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 644 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -394,14 +399,14 @@ check_3_19() {
   file="/etc/default/docker"
   if [ -f "$file" ]; then
     if [ "$(stat -c %U:%G "$file")" = 'root:root' ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -412,14 +417,14 @@ check_3_20() {
   file="/etc/default/docker"
   if [ -f "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 644 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -430,14 +435,14 @@ check_3_21() {
   file="/etc/sysconfig/docker"
   if [ -f "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 644 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -448,14 +453,14 @@ check_3_22() {
   file="/etc/sysconfig/docker"
   if [ -f "$file" ]; then
     if [ "$(stat -c %U:%G "$file")" = 'root:root' ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -466,14 +471,14 @@ check_3_23() {
   file="/run/containerd/containerd.sock"
   if [ -S "$file" ]; then
     if [ "$(stat -c %U:%G "$file")" = 'root:root' ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong ownership for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -484,14 +489,14 @@ check_3_24() {
   file="/run/containerd/containerd.sock"
   if [ -S "$file" ]; then
     if [ "$(stat -c %a "$file")" -le 660 ]; then
-      log_pass "$id - $desc"
+      add_summary "$id" "$desc" "PASS"
       return
     fi
-    log_warn "$id - $desc"
+    add_summary "$id" "$desc" "FAIL"
     echo "      * Wrong permissions for $file"
     return
   fi
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
   echo "      * File not found"
 }
 
@@ -529,6 +534,40 @@ main (){
   echo "================================================================="
   echo "                  Section 3 Checks Complete                    "
   echo "================================================================="
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "3 - Docker Daemon Configuration Files"
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+        
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${C_BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${C_GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${C_RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${C_BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${C_YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 3 finished."
+    echo "=========================================="
 }
 
 main

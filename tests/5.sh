@@ -1,6 +1,12 @@
 #!/bin/bash
+
+# Thay đổi thư mục làm việc thành thư mục chứa tập lệnh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/cis_log.sh"
+pushd "$SCRIPT_DIR" >/dev/null
+
+
+# Lấy nguồn tệp cis_log.sh từ cùng thư mục
+source "./cis_log.sh"
 
 check_5() {
   echo ""
@@ -25,10 +31,10 @@ check_5_1() {
   local desc="Ensure swarm mode is not Enabled, if not needed (Automated)"
 
   if docker info 2>/dev/null | grep -e "Swarm:.*inactive" >/dev/null 2>&1; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
     return
   fi
-  log_warn "$id - $desc"
+  add_summary "$id" "$desc" "FAIL"
 }
 
 check_5_2() {
@@ -46,7 +52,7 @@ check_5_2() {
 
     if [ "$policy" = "AppArmorProfile=" ] || [ "$policy" = "AppArmorProfile=[]" ] || [ "$policy" = "AppArmorProfile=<no value>" ] || [ "$policy" = "AppArmorProfile=unconfined" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * No AppArmorProfile Found: $c"
@@ -55,7 +61,7 @@ check_5_2() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -78,7 +84,7 @@ check_5_4() {
 
     if [ "$caps" != 'CapAdd=' ] && [ "$caps" != 'CapAdd=[]' ] && [ "$caps" != 'CapAdd=<no value>' ] && [ "$caps" != 'CapAdd=<nil>' ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * Capabilities added: $caps to $c"
@@ -87,7 +93,7 @@ check_5_4() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -106,7 +112,7 @@ check_5_5() {
 
     if [ "$privileged" = "true" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * Container running in Privileged mode: $c"
@@ -115,7 +121,7 @@ check_5_5() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -150,7 +156,7 @@ check_5_6() {
       fi
       if [ $sensitive -eq 1 ]; then
         if [ $fail -eq 0 ]; then
-          log_warn "$id - $desc"
+          add_summary "$id" "$desc" "FAIL"
           fail=1
         fi
         echo "     * Sensitive directory $v mounted in: $c"
@@ -160,7 +166,7 @@ check_5_6() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -178,7 +184,7 @@ check_5_7() {
     processes=$(docker exec "$c" ps -el 2>/dev/null | grep -c sshd | awk '{print $1}')
     if [ "$processes" -ge 1 ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * Container running sshd: $c"
@@ -188,7 +194,7 @@ check_5_7() {
     docker exec "$c" ps -el 2>/dev/null >/dev/null
     if [ $? -eq 255 ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * Docker exec fails: $c"
@@ -197,7 +203,7 @@ check_5_7() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -217,7 +223,7 @@ check_5_8() {
     for port in $ports; do
       if [ -n "$port" ] && [ "$port" -lt 1025 ]; then
         if [ $fail -eq 0 ]; then
-          log_warn "$id - $desc"
+          add_summary "$id" "$desc" "FAIL"
           fail=1
         fi
         echo "     * Privileged Port in use: $port in $c"
@@ -227,7 +233,7 @@ check_5_8() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -247,7 +253,7 @@ check_5_9() {
     for port in $ports; do
       if [ -n "$port" ]; then
         if [ $fail -eq 0 ]; then
-          log_warn "$id - $desc"
+          add_summary "$id" "$desc" "INFO"
           fail=1
         fi
         echo "     * Port in use: $port in $c"
@@ -257,7 +263,7 @@ check_5_9() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -276,7 +282,7 @@ check_5_10() {
 
     if [ "$mode" = "NetworkMode=host" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "     * Container running with networking mode 'host': $c"
@@ -285,7 +291,7 @@ check_5_10() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -307,7 +313,7 @@ check_5_11() {
 
     if [ "$memory" = "0" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Container running without memory restrictions: $c"
@@ -316,7 +322,7 @@ check_5_11() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -341,7 +347,7 @@ check_5_12() {
 
     if [ "$cpushares" = "0" ] && [ "$nanocpus" = "0" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Container running without CPU restrictions: $c"
@@ -350,7 +356,7 @@ check_5_12() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -369,7 +375,7 @@ check_5_13() {
 
     if [ "$read_status" = "false" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Container running with root FS mounted R/W: $c"
@@ -378,7 +384,7 @@ check_5_13() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -396,7 +402,7 @@ check_5_14() {
     for ip in $(docker port "$c" 2>/dev/null | awk '{print $3}' | cut -d ':' -f1); do
       if [ "$ip" = "0.0.0.0" ]; then
         if [ $fail -eq 0 ]; then
-          log_warn "$id - $desc"
+          add_summary "$id" "$desc" "FAIL"
           fail=1
         fi
         echo "      * Port being bound to wildcard IP: $ip in $c"
@@ -406,7 +412,7 @@ check_5_14() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -442,7 +448,7 @@ check_5_15() {
 
     if [ -n "$restart_policy" ] && [ "$restart_policy" -gt "5" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * MaximumRetryCount is not set to 5 or less: $c"
@@ -451,7 +457,7 @@ check_5_15() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -470,7 +476,7 @@ check_5_16() {
 
     if [ "$mode" = "PidMode=host" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Host PID namespace being shared with: $c"
@@ -479,7 +485,7 @@ check_5_16() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -498,7 +504,7 @@ check_5_17() {
 
     if [ "$mode" = "IpcMode=host" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Host IPC namespace being shared with: $c"
@@ -507,7 +513,7 @@ check_5_17() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -526,7 +532,7 @@ check_5_18() {
 
     if [ "$devices" != "Devices=" ] && [ "$devices" != "Devices=[]" ] && [ "$devices" != "Devices=<no value>" ]; then
       if [ $fail -eq 0 ]; then
-        log_info "$id - $desc"
+        add_summary "$id" "$desc" "INFO"
         fail=1
       fi
       echo "      * Container has devices exposed directly: $c"
@@ -535,7 +541,7 @@ check_5_18() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -554,7 +560,7 @@ check_5_19() {
 
     if [ "$ulimits" = "Ulimits=" ] || [ "$ulimits" = "Ulimits=[]" ] || [ "$ulimits" = "Ulimits=<no value>" ]; then
       if [ $fail -eq 0 ]; then
-        log_info "$id - $desc"
+        add_summary "$id" "$desc" "INFO"
         fail=1
       fi
       echo "      * Container no default ulimit override: $c"
@@ -563,7 +569,7 @@ check_5_19() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -581,7 +587,7 @@ check_5_20() {
     if docker inspect --format 'Propagation={{range $mnt := .Mounts}} {{json $mnt.Propagation}} {{end}}' "$c" 2>/dev/null | \
        grep shared >/dev/null 2>&1; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Mount propagation mode is shared: $c"
@@ -590,7 +596,7 @@ check_5_20() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -609,7 +615,7 @@ check_5_21() {
 
     if [ "$mode" = "UTSMode=host" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Host UTS namespace being shared with: $c"
@@ -618,7 +624,7 @@ check_5_21() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -636,7 +642,7 @@ check_5_22() {
     if docker inspect --format 'SecurityOpt={{.HostConfig.SecurityOpt }}' "$c" 2>/dev/null | \
       grep -E 'seccomp:unconfined|seccomp=unconfined' >/dev/null 2>&1; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Default seccomp profile disabled: $c"
@@ -645,7 +651,7 @@ check_5_22() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -664,7 +670,7 @@ check_5_25() {
 
     if [ "$mode" != "CgroupParent=x" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Confirm cgroup usage: $c"
@@ -673,7 +679,7 @@ check_5_25() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -691,7 +697,7 @@ check_5_26() {
   for c in $containers; do
     if ! docker inspect --format 'SecurityOpt={{.HostConfig.SecurityOpt }}' "$c" 2>/dev/null | grep 'no-new-privileges' >/dev/null 2>&1; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Privileges not restricted: $c"
@@ -700,7 +706,7 @@ check_5_26() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -717,7 +723,7 @@ check_5_27() {
   for c in $containers; do
     if ! docker inspect --format '{{ .Id }}: Health={{ .State.Health.Status }}' "$c" 2>/dev/null 1>&2; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Health check not set: $c"
@@ -726,7 +732,7 @@ check_5_27() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -738,7 +744,7 @@ check_5_28() {
   local id="5.28"
   local desc="Ensure that Docker commands always make use of the latest version of their image (Manual)"
 
-  log_info "$id - $desc"
+  add_summary "$id" "$desc" "INFO"
 }
 
 check_5_29() {
@@ -756,7 +762,7 @@ check_5_29() {
 
     if [ "$pidslimit" = "0" ] || [ "$pidslimit" = "<nil>" ] || [ "$pidslimit" = "-1" ]; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * PIDs limit not set: $c"
@@ -765,7 +771,7 @@ check_5_29() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -788,7 +794,7 @@ check_5_30() {
 
       if [ -n "$docker0Containers" ]; then
         if [ $fail -eq 0 ]; then
-          log_info "$id - $desc"
+          add_summary "$id" "$desc" "INFO"
           fail=1
         fi
         for c in $docker0Containers; do
@@ -803,7 +809,7 @@ check_5_30() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -820,7 +826,7 @@ check_5_31() {
   for c in $containers; do
     if docker inspect --format '{{ .HostConfig.UsernsMode }}' "$c" 2>/dev/null | grep -i 'host' >/dev/null 2>&1; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Namespace shared: $c"
@@ -829,7 +835,7 @@ check_5_31() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -846,7 +852,7 @@ check_5_32() {
   for c in $containers; do
     if docker inspect --format '{{ .Mounts }}' "$c" 2>/dev/null | grep 'docker.sock' >/dev/null 2>&1; then
       if [ $fail -eq 0 ]; then
-        log_warn "$id - $desc"
+        add_summary "$id" "$desc" "FAIL"
         fail=1
       fi
       echo "      * Docker socket shared: $c"
@@ -855,7 +861,7 @@ check_5_32() {
   done
 
   if [ $fail -eq 0 ]; then
-    log_pass "$id - $desc"
+    add_summary "$id" "$desc" "PASS"
   fi
 }
 
@@ -900,6 +906,40 @@ main() {
   echo "================================================================="
   echo "                  Section 5 Checks Complete                    "
   echo "================================================================="
+
+    PASS_COUNT=0
+    FAIL_COUNT=0
+    INFO_COUNT=0
+    log_info "5 - Container Runtime"
+    for entry in "${SUMMARY[@]}"; do
+        IFS='|' read -r id title status detail <<< "$entry"
+        
+        msg="$id - $title"
+
+        case "$status" in
+            PASS)
+                log_pass "$$msg" 
+                ((PASS_COUNT++))
+                ;;
+            FAIL)
+                log_fail "$$msg"
+                ((FAIL_COUNT++))
+                ;;
+            INFO)
+                log_info "$$msg"
+                ((INFO_COUNT++))
+                ;;
+        esac
+    done
+    echo -e "${C_BLUE}===== SUMMARY REPORT =====${NC}"
+    echo -e "${C_GREEN}PASS: $PASS_COUNT${NC}"
+    echo -e "${C_RED}FAIL: $FAIL_COUNT${NC}"
+    echo -e "${C_BLUE}INFO: $INFO_COUNT${NC}"
+    echo -e "${C_YELLOW}TOTAL: $((PASS_COUNT + FAIL_COUNT + INFO_COUNT))${NC}"
+    echo ""
+    echo "=========================================="
+    echo "Remediation script for Section 5 finished."
+    echo "=========================================="
 }
 
 main
