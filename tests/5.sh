@@ -884,6 +884,7 @@ main() {
     check_5_10
     check_5_11
     check_5_12
+    check_5_13
     check_5_14
     check_5_15
     check_5_16
@@ -918,15 +919,15 @@ main() {
 
         case "$status" in
             PASS)
-                log_pass "$$msg" 
+                log_pass "$msg" 
                 ((PASS_COUNT++))
                 ;;
             FAIL)
-                log_fail "$$msg"
+                log_fail "$msg"
                 ((FAIL_COUNT++))
                 ;;
             INFO)
-                log_info "$$msg"
+                log_info "$msg"
                 ((INFO_COUNT++))
                 ;;
         esac

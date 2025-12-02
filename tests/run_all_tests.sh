@@ -4,7 +4,7 @@
 
 # Ensure we are in the script's directory
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit
-
+source "./cis_log.sh"
 # Initialize total counters
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -55,12 +55,6 @@ for script in "${TEST_SCRIPTS[@]}"; do
 done
 
 # --- Grand Total Summary ---
-# Using the same color codes as cis_log.sh for consistency
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
 
 echo "================================================================="
 echo "                GRAND TOTAL SUMMARY OF ALL TESTS                 "

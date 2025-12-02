@@ -49,8 +49,15 @@
           - "stdout={{ bench_run.stdout | default('') }}"
           - "stderr={{ bench_run.stderr | default('') }}"
 
+    - name: Create unique run ID on localhost
+      set_fact:
+        run_id: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+      run_once: true
+      delegate_to: localhost
+      delegate_facts: true
+
     - name: Fetch log back to WSL
       fetch:
         src: "{{ bench_remote_dir }}/output.log"
-        dest: ./logs/main-bench/{{ ansible_date_time.iso8601_basic_short }}/{{ inventory_hostname }}_output.log
+        dest: "./logs/main-bench/{{ hostvars['localhost'].run_id }}/{{ inventory_hostname }}_output.log"
         flat: yes

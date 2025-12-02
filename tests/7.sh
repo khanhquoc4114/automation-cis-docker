@@ -277,15 +277,15 @@ main() {
 
         case "$status" in
             PASS)
-                log_pass "$$msg" 
+                log_pass "$msg" 
                 ((PASS_COUNT++))
                 ;;
             FAIL)
-                log_fail "$$msg"
+                log_fail "$msg"
                 ((FAIL_COUNT++))
                 ;;
             INFO)
-                log_info "$$msg"
+                log_info "$msg"
                 ((INFO_COUNT++))
                 ;;
         esac

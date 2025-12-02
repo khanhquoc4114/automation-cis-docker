@@ -1,0 +1,15 @@
+- name: Fix Python/Jinja2 env cho Ansible controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Gỡ jinja2 cài bằng pip (nếu có)
+      ansible.builtin.pip:
+        name: jinja2
+        state: absent
+
+    - name: Cài jinja2 version tương thích cho user hiện tại
+      ansible.builtin.pip:
+        name: "jinja2==3.0.3"
+        extra_args: --user
