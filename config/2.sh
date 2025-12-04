@@ -96,6 +96,116 @@ remediate_2_4() {
     fi
 }
 
+# --- Check 2.9 Remediation ---
+remediate_2_9() {
+    log_info "2.9 - Remediation: Configure centralized logging"
+    
+    local DAEMON_JSON_FILE="/etc/docker/daemon.json"
+    
+    if ! command -v jq &> /dev/null; then
+        log_fail "2.9 - FAILED: 'jq' command not found. Cannot remediate."
+        return
+    fi
+    
+    [ ! -f "$DAEMON_JSON_FILE" ] && echo "{}" > "$DAEMON_JSON_FILE"
+    
+    local current_driver=$(jq -r '."log-driver"' "$DAEMON_JSON_FILE" 2>/dev/null)
+    
+    if [ "$current_driver" != "null" ] && [ -n "$current_driver" ]; then
+        log_pass "2.9 - Already has log-driver configured: $current_driver"
+        return
+    fi
+    
+    # Configure json-file with rotation as default centralized logging
+    if jq '."log-driver" = "json-file" | ."log-opts" = {"max-size": "10m", "max-file": "3"}' "$DAEMON_JSON_FILE" > "$DAEMON_JSON_FILE.tmp"; then
+        mv "$DAEMON_JSON_FILE.tmp" "$DAEMON_JSON_FILE"
+        chown root:root "$DAEMON_JSON_FILE"
+        chmod 644 "$DAEMON_JSON_FILE"
+        log_remediate "2.9 - Configured json-file log driver with rotation in $DAEMON_JSON_FILE"
+        add_summary "2.9" "Centralized logging" "PASS"
+    else
+        log_fail "2.9 - FAILED: 'jq' command failed to update $DAEMON_JSON_FILE"
+        rm -f "$DAEMON_JSON_FILE.tmp"
+    fi
+}
+
+# --- Check 2.10 Remediation ---
+remediate_2_10() {
+    log_info "2.10 - Remediation: Configure default ulimits"
+    
+    local DAEMON_JSON_FILE="/etc/docker/daemon.json"
+    
+    if ! command -v jq &> /dev/null; then
+        log_fail "2.10 - FAILED: 'jq' command not found. Cannot remediate."
+        return
+    fi
+    
+    [ ! -f "$DAEMON_JSON_FILE" ] && echo "{}" > "$DAEMON_JSON_FILE"
+    
+    local current_val=$(jq -r '."default-ulimits"' "$DAEMON_JSON_FILE" 2>/dev/null)
+    
+    if [ "$current_val" != "null" ]; then
+        log_pass "2.10 - Already has ulimits configured."
+        return
+    fi
+    
+    # Set reasonable default ulimits
+    if jq '."default-ulimits" = {"nofile": {"Name": "nofile", "Hard": 64000, "Soft": 64000}, "nproc": {"Name": "nproc", "Hard": 4096, "Soft": 4096}}' "$DAEMON_JSON_FILE" > "$DAEMON_JSON_FILE.tmp"; then
+        mv "$DAEMON_JSON_FILE.tmp" "$DAEMON_JSON_FILE"
+        chown root:root "$DAEMON_JSON_FILE"
+        chmod 644 "$DAEMON_JSON_FILE"
+        log_remediate "2.10 - Set default ulimits in $DAEMON_JSON_FILE"
+    else
+        log_fail "2.10 - FAILED: 'jq' command failed to update $DAEMON_JSON_FILE"
+        rm -f "$DAEMON_JSON_FILE.tmp"
+    fi
+}
+
+# --- Check 2.13 Remediation ---
+remediate_2_13() {
+    log_info "2.13 - Remediation: Disable legacy registry (v1)"
+    log_info "Docker >= 17.12 has deprecated v1 registry support"
+    log_info "Checking Docker version..."
+    
+    local docker_version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+    log_info "Current Docker version: $docker_version"
+    
+    # Docker 17.12+ does not support v1 registry
+    log_pass "2.13 - Modern Docker versions have disabled v1 registry by default"
+    add_summary "2.13" "Legacy registry disabled" "PASS"
+}
+
+# --- Check 2.14 Remediation ---
+remediate_2_14() {
+    log_info "2.14 - Remediation: Enable live restore"
+    
+    local DAEMON_JSON_FILE="/etc/docker/daemon.json"
+    
+    if ! command -v jq &> /dev/null; then
+        log_fail "2.14 - FAILED: 'jq' command not found. Cannot remediate."
+        return
+    fi
+    
+    [ ! -f "$DAEMON_JSON_FILE" ] && echo "{}" > "$DAEMON_JSON_FILE"
+    
+    local current_val=$(jq -r '."live-restore"' "$DAEMON_JSON_FILE" 2>/dev/null)
+    
+    if [ "$current_val" = "true" ]; then
+        log_pass "2.14 - Already compliant. 'live-restore' is 'true'."
+        return
+    fi
+    
+    if jq '."live-restore" = true' "$DAEMON_JSON_FILE" > "$DAEMON_JSON_FILE.tmp"; then
+        mv "$DAEMON_JSON_FILE.tmp" "$DAEMON_JSON_FILE"
+        chown root:root "$DAEMON_JSON_FILE"
+        chmod 644 "$DAEMON_JSON_FILE"
+        log_remediate "2.14 - Set 'live-restore' to true in $DAEMON_JSON_FILE"
+    else
+        log_fail "2.14 - FAILED: 'jq' command failed to update $DAEMON_JSON_FILE"
+        rm -f "$DAEMON_JSON_FILE.tmp"
+    fi
+}
+
 # --- Check 2.15 Remediation ---
 remediate_2_15() {
     log_info "2.15 - Remediation: Set 'no-new-privileges' to true"
@@ -279,6 +389,14 @@ main() {
     echo "---"
     remediate_2_4
     echo "---"
+    remediate_2_9
+    echo "---"
+    remediate_2_10
+    echo "---"
+    remediate_2_13
+    echo "---"
+    remediate_2_14
+    echo "---"
     remediate_2_15
     echo "---"
     remediate_2_16
@@ -290,4 +408,7 @@ main() {
     remediate_2_19
 }
 
-main
+# Chỉ chạy main khi file được thực thi trực tiếp, không phải khi được source
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

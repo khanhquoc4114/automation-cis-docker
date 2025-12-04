@@ -619,6 +619,7 @@ main() {
     echo "=========================================="
 }
 
-# Run main function
-main "$@"
-
+# Chỉ chạy main khi file được thực thi trực tiếp, không phải khi được source
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

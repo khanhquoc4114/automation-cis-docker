@@ -1,6 +1,40 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cis_log.sh"
+
+################################################################################
+# 4.5 - Ensure Content trust for Docker is Enabled
+################################################################################
+
+remediate_4_5() {
+    log_info "4.5 - Remediation: Enable Docker Content Trust"
+    
+    # Check if DOCKER_CONTENT_TRUST is already set
+    if [ "${DOCKER_CONTENT_TRUST:-0}" = "1" ]; then
+        log_pass "4.5 - Already compliant. DOCKER_CONTENT_TRUST is enabled."
+        return
+    fi
+    
+    # Add to /etc/environment for system-wide setting
+    if ! grep -q "DOCKER_CONTENT_TRUST=1" /etc/environment 2>/dev/null; then
+        echo "DOCKER_CONTENT_TRUST=1" >> /etc/environment
+        log_remediate "4.5 - Added DOCKER_CONTENT_TRUST=1 to /etc/environment"
+    fi
+    
+    # Add to /etc/profile.d for shell sessions
+    if [ ! -f "/etc/profile.d/docker-content-trust.sh" ]; then
+        echo 'export DOCKER_CONTENT_TRUST=1' > /etc/profile.d/docker-content-trust.sh
+        chmod 644 /etc/profile.d/docker-content-trust.sh
+        log_remediate "4.5 - Created /etc/profile.d/docker-content-trust.sh"
+    fi
+    
+    # Export for current session
+    export DOCKER_CONTENT_TRUST=1
+    
+    log_info "4.5 - Docker Content Trust enabled. Logout/login required for full effect."
+    add_summary "4.5" "Docker Content Trust" "PASS"
+}
+
 main() {
     echo "=============================================="
     echo "CIS Docker Benchmark Section 4 Remediation"
@@ -55,5 +89,7 @@ main() {
     echo "=========================================="
 }
 
-# Run main function
-main "$@"
+# Chỉ chạy main khi file được thực thi trực tiếp, không phải khi được source
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
