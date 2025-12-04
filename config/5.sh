@@ -474,9 +474,10 @@ main() {
     fi
     
     # Menu for selective remediation
-    if [ "$1" == "--all" ]; then
+    if [ "$1" == "--all" ] || [ -z "$1" ]; then
+        # Mặc định chạy tất cả nếu không có tham số
         for i in {1..32}; do
-            eval "remediate_5_$i"
+            eval "remediate_5_$i" 2>/dev/null || true
             echo ""
         done
     elif [ -n "$1" ]; then
@@ -487,11 +488,6 @@ main() {
             log_error "Invalid remediation number. Use 1-32 or --all"
             exit 1
         fi
-    else
-        log_info "Usage: $0 [--all|1-32]"
-        log_info "  --all    : Run all remediations"
-        log_info "  1-32     : Run specific remediation (e.g., 1 for 5.1)"
-        exit 0
     fi
     
     echo ""

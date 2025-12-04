@@ -20,6 +20,9 @@ log_info() {
 log_fail() {
     echo -e " ${C_RED}[FAIL]${C_NC} $1"
 }
+log_error() {
+    echo -e " ${C_RED}[ERROR]${C_NC} $1"
+}
 log_remediate() {
     echo -e " ${C_GREEN}[REMEDIATE]${C_NC} $1"
 }
