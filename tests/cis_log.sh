@@ -1,7 +1,9 @@
 #!/bin/bash
 
 USE_COLOR=1
-if [ ! -t 1 ] || [ -n "$NO_COLOR" ]; then
+if [ -n "$FORCE_COLOR" ]; then
+  USE_COLOR=1
+elif [ ! -t 1 ] || [ -n "$NO_COLOR" ]; then
   USE_COLOR=0
 fi
 
@@ -37,10 +39,30 @@ log_cmd() {
 
 declare -a REMEDIATION_SUMMARY=()
 
+# Files to store failed tests and remediation commands
+FAILED_TESTS_LOG="${FAILED_TESTS_LOG:-/tmp/cis_failed_tests_$$.log}"
+REMEDIATION_LOG="${REMEDIATION_LOG:-/tmp/cis_remediation_$$.log}"
+
 add_summary() {
     local id="$1"
     local title="$2"
     local status="$3"
 
     SUMMARY+=("$id|$title|$status")
+
+    # If FAIL, log to failed tests file
+    if [ "$status" = "FAIL" ]; then
+        echo "$id|$title" >> "$FAILED_TESTS_LOG"
+    fi
+}
+
+# Add remediation command for a failed test
+add_remediation() {
+    local id="$1"
+    local remediation="$2"
+
+    # Use delimiter that won't appear in commands
+    echo "===START_REMEDIATION:${id}===" >> "$REMEDIATION_LOG"
+    echo "$remediation" >> "$REMEDIATION_LOG"
+    echo "===END_REMEDIATION:${id}===" >> "$REMEDIATION_LOG"
 }

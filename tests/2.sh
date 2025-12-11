@@ -272,6 +272,16 @@ check_2_9() {
         echo "     Please verify settings manually: $json_ulimit"
     else
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Cài đặt jq nếu chưa có
+sudo apt-get install -y jq
+# Tạo daemon.json nếu chưa tồn tại
+sudo mkdir -p /etc/docker
+[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
+# Thêm default ulimits
+sudo jq '. + {\"default-ulimits\": {\"nofile\": {\"Name\": \"nofile\", \"Hard\": 64000, \"Soft\": 64000}, \"nproc\": {\"Name\": \"nproc\", \"Hard\": 4096, \"Soft\": 4096}}}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+sudo systemctl restart docker
+# Verify: docker info --format '{{.SecurityOptions}}'"
     fi
 }
 
@@ -279,19 +289,36 @@ check_2_9() {
 check_2_10() {
     local id="2.10"
     local desc="Enable user namespace support (Manual)"
-    
+
     if ! command -v docker &> /dev/null; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Docker chưa được cài đặt
+sudo apt-get update && sudo apt-get install -y docker.io
+sudo systemctl enable docker && sudo systemctl start docker"
         return
     fi
 
     # Self-contained command (Corrected PDF template)
     local userns=$(docker info --format '{{ .SecurityOptions }}' 2>/dev/null | grep 'userns')
-    
+
     if [ -n "$userns" ]; then
         add_summary "$id" "$desc" "PASS"
     else
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "⚠️ CẢNH BÁO: Sẽ ảnh hưởng containers hiện có, cần recreate tất cả containers
+# Cài đặt jq nếu chưa có
+sudo apt-get install -y jq
+# Tạo daemon.json nếu chưa tồn tại
+sudo mkdir -p /etc/docker
+[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
+# Enable user namespace
+sudo jq '. + {\"userns-remap\": \"default\"}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+# Tạo subuid và subgid mapping
+echo 'dockremap:100000:65536' | sudo tee -a /etc/subuid
+echo 'dockremap:100000:65536' | sudo tee -a /etc/subgid
+sudo systemctl restart docker
+# Verify: docker info --format '{{.SecurityOptions}}' | grep userns"
     fi
 }
 
@@ -372,13 +399,15 @@ check_2_13() {
 
     if ! command -v jq &> /dev/null; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Cài đặt jq
+sudo apt-get update && sudo apt-get install -y jq"
         return
     fi
-    
+
     # Self-contained setup
     local DAEMON_JSON_FILE="/etc/docker/daemon.json"
     local DOCKER_CMD_LINE=$(ps -ef | grep 'dockerd' | grep -v 'grep' || true)
-    
+
     local cmd_auth_plugin=$(echo "$DOCKER_CMD_LINE" | grep -o 'authorization-plugin=[^ ]*')
     local json_auth_plugin="null"
     if [ -f "$DAEMON_JSON_FILE" ]; then
@@ -391,6 +420,20 @@ check_2_13() {
         add_summary "$id" "$desc" "PASS"
     else
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Bước 1: Cài đặt authorization plugin (ví dụ: opa-docker-authz)
+# Download và cài đặt plugin (ví dụ):
+# wget https://github.com/open-policy-agent/opa-docker-authz/releases/download/v0.4.4/opa-docker-authz_0.4.4_linux_amd64.tar.gz
+# tar -xzf opa-docker-authz_0.4.4_linux_amd64.tar.gz
+# sudo mv opa-docker-authz /usr/local/bin/
+# Bước 2: Tạo systemd service cho plugin (xem docs của plugin)
+# Bước 3: Update daemon.json
+sudo apt-get install -y jq
+sudo mkdir -p /etc/docker
+[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
+sudo jq '. + {\"authorization-plugins\": [\"opa-docker-authz\"]}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+sudo systemctl restart docker
+# Note: Phải cài plugin authorization thực sự để check pass"
     fi
 }
 
@@ -398,17 +441,33 @@ check_2_13() {
 check_2_14() {
     local id="2.14"
     local desc="Ensure centralized and remote logging is configured (Manual)"
-    
+
     if ! command -v docker &> /dev/null; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Docker chưa được cài đặt
+sudo apt-get update && sudo apt-get install -y docker.io
+sudo systemctl enable docker && sudo systemctl start docker"
         return
     fi
-    
+
     # Self-contained command (Corrected PDF template)
     local log_driver=$(docker info --format '{{ .LoggingDriver }}' 2>/dev/null)
-    
+
     if [ "$log_driver" = "json-file" ]; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Cài đặt jq nếu chưa có
+sudo apt-get install -y jq
+# Tạo daemon.json nếu chưa tồn tại
+sudo mkdir -p /etc/docker
+[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
+# Option 1: Sử dụng journald (Recommended)
+sudo jq '. + {\"log-driver\": \"journald\"}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+# Option 2: Sử dụng syslog (uncomment nếu muốn dùng)
+# sudo jq '. + {\"log-driver\": \"syslog\", \"log-opts\": {\"syslog-address\": \"tcp://127.0.0.1:514\"}}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+# sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+sudo systemctl restart docker
+# Verify: docker info --format '{{.LoggingDriver}}'"
     else
         add_summary "$id" "$desc" "PASS"
     fi
@@ -508,16 +567,21 @@ check_2_17() {
 check_2_18() {
     local id="2.18"
     local desc="Ensure that a daemon-wide custom seccomp profile is applied if appropriate (Manual)"
-    
+
     if ! command -v docker &> /dev/null; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Docker chưa được cài đặt
+sudo apt-get update && sudo apt-get install -y docker.io
+sudo systemctl enable docker && sudo systemctl start docker"
         return
     fi
     if ! command -v jq &> /dev/null; then
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Cài đặt jq
+sudo apt-get update && sudo apt-get install -y jq"
         return
     fi
-    
+
     # Self-contained setup
     local DAEMON_JSON_FILE="/etc/docker/daemon.json"
     local DOCKER_CMD_LINE=$(ps -ef | grep 'dockerd' | grep -v 'grep' || true)
@@ -527,9 +591,9 @@ check_2_18() {
     if [ -f "$DAEMON_JSON_FILE" ]; then
         json_seccomp=$(jq -r '."seccomp-profile"' "$DAEMON_JSON_FILE" 2>/dev/null)
     fi
-    
+
     local info_seccomp=$(docker info --format '{{ .SecurityOptions }}' 2>/dev/null | grep 'seccomp')
-    
+
     if [ -n "$cmd_seccomp" ]; then
         add_summary "$id" "$desc" "INFO"
         echo "       Please confirm this is appropriate for your environment."
@@ -540,6 +604,26 @@ check_2_18() {
         add_summary "$id" "$desc" "PASS"
     else
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Tạo custom seccomp profile
+sudo mkdir -p /etc/docker/seccomp
+# Tạo file seccomp profile (ví dụ minimal)
+sudo tee /etc/docker/seccomp/default.json > /dev/null <<'EOF'
+{
+  \"defaultAction\": \"SCMP_ACT_ERRNO\",
+  \"architectures\": [\"SCMP_ARCH_X86_64\", \"SCMP_ARCH_X86\", \"SCMP_ARCH_X32\"],
+  \"syscalls\": [
+    {\"names\": [\"accept\", \"accept4\", \"access\", \"bind\", \"brk\", \"clone\", \"close\", \"connect\", \"dup\", \"dup2\", \"dup3\", \"epoll_create\", \"epoll_ctl\", \"epoll_wait\", \"execve\", \"exit\", \"exit_group\", \"fcntl\", \"fstat\", \"futex\", \"getcwd\", \"getdents\", \"getegid\", \"geteuid\", \"getgid\", \"getpid\", \"getppid\", \"getuid\", \"listen\", \"lseek\", \"mmap\", \"mprotect\", \"munmap\", \"open\", \"openat\", \"pipe\", \"poll\", \"prctl\", \"read\", \"readlink\", \"recvfrom\", \"recvmsg\", \"rt_sigaction\", \"rt_sigprocmask\", \"rt_sigreturn\", \"sendmsg\", \"sendto\", \"setgid\", \"setgroups\", \"setsockopt\", \"setuid\", \"socket\", \"stat\", \"uname\", \"wait4\", \"write\"], \"action\": \"SCMP_ACT_ALLOW\"}
+  ]
+}
+EOF
+# Update daemon.json
+sudo apt-get install -y jq
+sudo mkdir -p /etc/docker
+[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
+sudo jq '. + {\"seccomp-profile\": \"/etc/docker/seccomp/default.json\"}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+sudo mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+sudo systemctl restart docker
+# Verify: docker info | grep seccomp"
     fi
 }
 

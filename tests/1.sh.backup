@@ -146,14 +146,6 @@ check_1_1_5() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /var/lib/docker -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep '/var/lib/docker'"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -176,14 +168,6 @@ check_1_1_6() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /etc/docker -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep '/etc/docker'"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -206,15 +190,6 @@ check_1_1_7() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Tìm và thêm audit rule cho docker.service
-SERVICE_FILE=\$(systemctl show -p FragmentPath docker.service | cut -d'=' -f2)
-sudo mkdir -p /etc/audit/rules.d
-echo \"-w \$SERVICE_FILE -k docker\" | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep docker.service"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -237,14 +212,6 @@ check_1_1_8() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /run/containerd/containerd.sock -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep containerd.sock"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -267,14 +234,6 @@ check_1_1_9() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /var/run/docker.sock -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep docker.sock"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -319,17 +278,6 @@ check_1_1_11() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Tạo file nếu chưa có
-sudo mkdir -p /etc/docker
-[ ! -f /etc/docker/daemon.json ] && echo '{}' | sudo tee /etc/docker/daemon.json
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /etc/docker/daemon.json -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep daemon.json"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -352,17 +300,6 @@ check_1_1_12() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Tạo file nếu chưa có
-sudo mkdir -p /etc/containerd
-[ ! -f /etc/containerd/config.toml ] && sudo touch /etc/containerd/config.toml
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /etc/containerd/config.toml -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep config.toml"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -407,14 +344,6 @@ check_1_1_14() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /usr/bin/containerd -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep '/usr/bin/containerd'"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -481,14 +410,6 @@ check_1_1_17() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /usr/bin/containerd -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep '/usr/bin/containerd'"
     return
   fi
   add_summary "$id" "$desc" "INFO"
@@ -511,14 +432,6 @@ check_1_1_18() {
       return
     fi
     add_summary "$id" "$desc" "FAIL"
-    add_remediation "$id" "# Cài đặt auditd nếu chưa có
-sudo apt-get install -y auditd
-sudo systemctl enable auditd && sudo systemctl start auditd
-# Thêm audit rule
-sudo mkdir -p /etc/audit/rules.d
-echo '-w /usr/bin/containerd -k docker' | sudo tee -a /etc/audit/rules.d/docker.rules
-sudo systemctl restart auditd
-# Verify: sudo auditctl -l | grep '/usr/bin/containerd'"
     return
   fi
   add_summary "$id" "$desc" "INFO"

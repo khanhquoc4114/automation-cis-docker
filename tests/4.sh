@@ -64,7 +64,7 @@ check_4_5() {
 
     local desc="Ensure Content trust for Docker is Enabled"
 
-    
+
 
     if [ "$DOCKER_CONTENT_TRUST" = "1" ]; then
 
@@ -73,6 +73,15 @@ check_4_5() {
     else
 
         add_summary "$id" "$desc" "FAIL"
+        add_remediation "$id" "# Thêm DOCKER_CONTENT_TRUST vào /etc/environment
+grep -q 'DOCKER_CONTENT_TRUST=1' /etc/environment || echo 'DOCKER_CONTENT_TRUST=1' | sudo tee -a /etc/environment
+# Tạo profile.d script
+echo 'export DOCKER_CONTENT_TRUST=1' | sudo tee /etc/profile.d/docker-content-trust.sh
+sudo chmod 644 /etc/profile.d/docker-content-trust.sh
+# Áp dụng cho session hiện tại
+export DOCKER_CONTENT_TRUST=1
+# Verify (sau khi logout/login hoặc source):
+# echo \$DOCKER_CONTENT_TRUST"
 
     fi
 
